@@ -1,0 +1,1 @@
+drop function if exists public.match_document_chunks(extensions.vector, uuid, uuid, int);
