@@ -229,6 +229,21 @@ function ChatPage() {
                 <p className="text-muted-foreground mt-2">Your AI tutor will read it and answer questions with citations.</p>
               </div>
             )}
+            {activeDoc && activeDoc.status === "failed" && (
+              <div className="glass-strong rounded-2xl p-6 border border-destructive/30">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold">Couldn't process this PDF</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{activeDoc.error || "Unknown error"}</p>
+                    <button onClick={() => retryDoc(activeDoc)}
+                      className="mt-4 inline-flex items-center gap-2 text-sm bg-foreground text-background rounded-full px-4 py-2 hover:opacity-90">
+                      <RefreshCw className="w-3.5 h-3.5" /> Try again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeDoc && messages.length === 0 && !streaming && activeDoc.status === "ready" && (
               <div className="grid sm:grid-cols-2 gap-3 pt-4">
                 {suggestions.map((s) => (
