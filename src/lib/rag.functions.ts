@@ -31,11 +31,18 @@ export const processDocument = createServerFn({ method: "POST" })
 
       const { extractText, getDocumentProxy } = await import("unpdf");
       const pdf = await getDocumentProxy(buf);
-      const { text, totalPages } = await extractText(pdf, { mergePages: true });
-      const fullText = Array.isArray(text) ? text.join("\n") : text;
+      const { text, totalPages } = await extractText(pdf, { mergePages: false });
+      const pages = Array.isArray(text) ? text : [text];
+      const fullText = pages.map((t) => (t ?? "").trim()).join("\n\n").trim();
+
+      if (!fullText || fullText.length < 20) {
+        throw new Error(
+          "This PDF has no extractable text. It looks like a scanned or image-only document. Please upload a text-based PDF (one where you can select text in a viewer).",
+        );
+      }
 
       const chunks = chunkText(fullText);
-      if (!chunks.length) throw new Error("No text extracted");
+      if (!chunks.length) throw new Error("No text extracted from PDF");
 
       // Batch embed in groups of 50
       const rows: { document_id: string; user_id: string; chunk_index: number; content: string; embedding: string }[] = [];
