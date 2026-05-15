@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { embed, chatStream, parseSSEDeltas } from "./ai-gateway.server";
+import { embed, chatStream, parseSSEDeltas, ocrPdfWithGemini } from "./ai-gateway.server";
 
 // Chunk text by ~1000 chars with overlap
 function chunkText(text: string, size = 1000, overlap = 150): string[] {
@@ -33,12 +33,24 @@ export const processDocument = createServerFn({ method: "POST" })
       const pdf = await getDocumentProxy(buf);
       const { text, totalPages } = await extractText(pdf, { mergePages: false });
       const pages = Array.isArray(text) ? text : [text];
-      const fullText = pages.map((t) => (t ?? "").trim()).join("\n\n").trim();
+      let fullText = pages.map((t) => (t ?? "").trim()).join("\n\n").trim();
 
-      if (!fullText || fullText.length < 20) {
-        throw new Error(
-          "This PDF has no extractable text. It looks like a scanned or image-only document. Please upload a text-based PDF (one where you can select text in a viewer).",
-        );
+      // Quality check: if native extraction looks empty/poor, OCR with Gemini vision
+      const letters = (fullText.match(/[A-Za-z]/g) || []).length;
+      if (fullText.length < 200 || letters < 100) {
+        // Cap OCR at ~15MB to keep request reasonable
+        if (buf.byteLength > 15 * 1024 * 1024) {
+          throw new Error("This PDF appears to be scanned/image-only and is too large to OCR (max 15MB for OCR).");
+        }
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        const b64 = btoa(bin);
+        const ocrText = await ocrPdfWithGemini(b64);
+        const ocrTrim = (ocrText || "").trim();
+        if (ocrTrim.length < 20) {
+          throw new Error("Couldn't extract any readable text from this PDF, even with OCR. Try a clearer scan or a text-based PDF.");
+        }
+        fullText = ocrTrim;
       }
 
       const chunks = chunkText(fullText);
