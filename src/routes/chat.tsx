@@ -69,9 +69,8 @@ function ChatPage() {
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, streamingText]);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  async function uploadFile(file: File) {
+    if (!user) return;
     if (file.type !== "application/pdf") return toast.error("Only PDF files are supported");
     if (file.size > 25 * 1024 * 1024) return toast.error("Max file size is 25MB");
 
@@ -86,7 +85,7 @@ function ChatPage() {
 
     setDocs((d) => [doc as Doc, ...d]);
     setActiveDoc(doc as Doc);
-    toast.message("Processing PDF…", { description: "Extracting text and indexing." });
+    toast.message("Processing PDF…", { description: "Extracting text. Scanned PDFs use AI vision (may take longer)." });
 
     try {
       await processFn({ data: { documentId: doc.id } });
@@ -96,6 +95,20 @@ function ChatPage() {
       toast.error(err instanceof Error ? err.message : "Processing failed");
       loadDocs();
     }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+    if (e.target) e.target.value = "";
+  }
+
+  const [dragOver, setDragOver] = useState(false);
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
   }
 
   async function send() {
