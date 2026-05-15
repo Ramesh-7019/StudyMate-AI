@@ -1,6 +1,9 @@
 import { Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Nav() {
+  const { user } = useAuth();
   const links = [
     { label: "Features", href: "#features" },
     { label: "How it works", href: "#how" },
@@ -25,10 +28,18 @@ export function Nav() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <a href="#cta" className="hidden sm:inline-flex text-sm px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors">Sign in</a>
-          <a href="#cta" className="inline-flex items-center gap-1 text-sm font-medium px-4 py-2 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity">
-            Get started
-          </a>
+          {user ? (
+            <Link to="/chat" className="inline-flex items-center gap-1 text-sm font-medium px-4 py-2 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity">
+              Open app
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="hidden sm:inline-flex text-sm px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors">Sign in</Link>
+              <Link to="/login" className="inline-flex items-center gap-1 text-sm font-medium px-4 py-2 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity">
+                Get started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

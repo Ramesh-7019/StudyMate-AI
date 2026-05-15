@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles, Zap } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import heroImg from "@/assets/hero-dashboard.jpg";
 
 export function Hero() {
@@ -26,10 +27,10 @@ export function Hero() {
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center items-center">
-          <a href="#cta" className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-foreground text-background font-medium hover:scale-[1.02] active:scale-[0.99] transition-transform shadow-glow">
+          <Link to="/login" className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-foreground text-background font-medium hover:scale-[1.02] active:scale-[0.99] transition-transform shadow-glow">
             Start studying free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </a>
+          </Link>
           <a href="#how" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full glass text-foreground font-medium hover:bg-white/5 transition-colors">
             <Zap className="w-4 h-4" />
             See how it works

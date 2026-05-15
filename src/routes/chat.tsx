@@ -4,13 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { processDocument, askDocument } from "@/lib/rag.functions";
-import { FileText, Loader2, Send, Sparkles, Upload, LogOut, MessageSquare, Plus } from "lucide-react";
+import { FileText, Loader2, Send, Sparkles, Upload, LogOut, MessageSquare, Plus, Square, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export const Route = createFileRoute("/chat")({ component: ChatPage });
 
 type Doc = { id: string; title: string; status: string; page_count: number };
-type Msg = { id: string; role: "user" | "assistant"; content: string };
+type Citation = { content: string; page: number | null; chunk_index: number };
+type Msg = { id: string; role: "user" | "assistant"; content: string; citations?: Citation[] };
 
 function ChatPage() {
   const { user, loading } = useAuth();
@@ -26,6 +29,7 @@ function ChatPage() {
   const askFn = useServerFn(askDocument);
   const processFn = useServerFn(processDocument);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -54,7 +58,7 @@ function ChatPage() {
       }
       setConvId(cid ?? null);
       const { data: msgs } = await supabase.from("messages").select("*").eq("conversation_id", cid!).order("created_at");
-      setMessages((msgs ?? []) as Msg[]);
+      setMessages((msgs ?? []) as unknown as Msg[]);
     })();
   }, [activeDoc, user]);
 
@@ -95,8 +99,9 @@ function ChatPage() {
     setInput("");
     setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content: q }]);
     setStreaming(true); setStreamingText("");
+    abortRef.current = new AbortController();
     try {
-      const stream = await askFn({ data: { documentId: activeDoc.id, conversationId: convId, question: q } });
+      const stream = await askFn({ data: { documentId: activeDoc.id, conversationId: convId, question: q }, signal: abortRef.current.signal });
       let acc = "";
       for await (const chunk of stream as AsyncIterable<{ delta: string }>) {
         acc += chunk.delta;
@@ -104,11 +109,33 @@ function ChatPage() {
       }
       setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: acc }]);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Chat failed");
+      const msg = err instanceof Error ? err.message : "Chat failed";
+      if (!/abort/i.test(msg)) toast.error(msg);
     } finally {
       setStreaming(false); setStreamingText("");
+      abortRef.current = null;
     }
   }
+
+  function stop() {
+    abortRef.current?.abort();
+  }
+
+  async function deleteDoc(d: Doc) {
+    if (!confirm(`Delete "${d.title}"? This removes the PDF and all chats for it.`)) return;
+    await supabase.storage.from("pdfs").remove([d.id]).catch(() => {});
+    await supabase.from("documents").delete().eq("id", d.id);
+    setDocs((arr) => arr.filter((x) => x.id !== d.id));
+    if (activeDoc?.id === d.id) { setActiveDoc(null); setMessages([]); setConvId(null); }
+    toast.success("Deleted");
+  }
+
+  const suggestions = [
+    "Summarize this document in 5 bullet points",
+    "What are the key concepts I must know?",
+    "Generate 5 quiz questions with answers",
+    "Explain the hardest section like I'm 12",
+  ];
 
   if (loading || !user) {
     return <div className="min-h-screen grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -174,8 +201,19 @@ function ChatPage() {
                 <p className="text-muted-foreground mt-2">Your AI tutor will read it and answer questions with citations.</p>
               </div>
             )}
+            {activeDoc && messages.length === 0 && !streaming && activeDoc.status === "ready" && (
+              <div className="grid sm:grid-cols-2 gap-3 pt-4">
+                {suggestions.map((s) => (
+                  <button key={s} onClick={() => setInput(s)}
+                    className="text-left glass rounded-2xl p-4 hover:bg-white/5 transition-colors flex items-start gap-3">
+                    <BookOpen className="w-4 h-4 mt-0.5 text-aurora-1 shrink-0" />
+                    <span className="text-sm">{s}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {messages.map((m) => <Bubble key={m.id} role={m.role} text={m.content} />)}
-            {streaming && <Bubble role="assistant" text={streamingText || "…"} />}
+            {streaming && <Bubble role="assistant" text={streamingText || "…"} streaming />}
           </div>
         </div>
 
@@ -187,10 +225,17 @@ function ChatPage() {
               disabled={!activeDoc || activeDoc.status !== "ready" || streaming}
               className="flex-1 bg-transparent px-3 py-2 outline-none disabled:opacity-50"
             />
-            <button type="submit" disabled={!input.trim() || streaming || activeDoc?.status !== "ready"}
-              className="grid place-items-center w-10 h-10 rounded-xl bg-foreground text-background hover:opacity-90 disabled:opacity-40 transition-opacity">
-              {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
+            {streaming ? (
+              <button type="button" onClick={stop}
+                className="grid place-items-center w-10 h-10 rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity">
+                <Square className="w-4 h-4" />
+              </button>
+            ) : (
+              <button type="submit" disabled={!input.trim() || activeDoc?.status !== "ready"}
+                className="grid place-items-center w-10 h-10 rounded-xl bg-foreground text-background hover:opacity-90 disabled:opacity-40 transition-opacity">
+                <Send className="w-4 h-4" />
+              </button>
+            )}
           </form>
         </div>
       </main>
@@ -198,14 +243,21 @@ function ChatPage() {
   );
 }
 
-function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
+function Bubble({ role, text, streaming }: { role: "user" | "assistant"; text: string; streaming?: boolean }) {
   const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+      <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
         isUser ? "bg-foreground text-background" : "glass"
       }`}>
-        {text}
+        {isUser ? (
+          <span className="whitespace-pre-wrap">{text}</span>
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:mt-3 prose-headings:mb-2 prose-pre:bg-black/40 prose-code:text-aurora-1">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            {streaming && <span className="inline-block w-1.5 h-4 align-middle bg-aurora-1 animate-pulse ml-0.5" />}
+          </div>
+        )}
       </div>
     </div>
   );
