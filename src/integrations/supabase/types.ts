@@ -166,38 +166,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      match_document_chunks:
-        | {
-            Args: {
-              match_count?: number
-              match_document_id: string
-              query_embedding: string
-            }
-            Returns: {
-              chunk_index: number
-              content: string
-              document_id: string
-              id: string
-              page: number
-              similarity: number
-            }[]
-          }
-        | {
-            Args: {
-              match_count?: number
-              match_document_id: string
-              match_user_id: string
-              query_embedding: string
-            }
-            Returns: {
-              chunk_index: number
-              content: string
-              document_id: string
-              id: string
-              page: number
-              similarity: number
-            }[]
-          }
+      match_document_chunks: {
+        Args: {
+          match_count?: number
+          match_document_id: string
+          query_embedding: string
+        }
+        Returns: {
+          chunk_index: number
+          content: string
+          document_id: string
+          id: string
+          page: number
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
