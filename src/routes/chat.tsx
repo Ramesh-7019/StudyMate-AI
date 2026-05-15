@@ -130,6 +130,20 @@ function ChatPage() {
     toast.success("Deleted");
   }
 
+  async function retryDoc(d: Doc) {
+    await supabase.from("documents").update({ status: "processing", error: null }).eq("id", d.id);
+    setDocs((arr) => arr.map((x) => x.id === d.id ? { ...x, status: "processing", error: null } : x));
+    toast.message("Reprocessing PDF…");
+    try {
+      await processFn({ data: { documentId: d.id } });
+      toast.success("Ready to chat!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Processing failed");
+    } finally {
+      loadDocs();
+    }
+  }
+
   const suggestions = [
     "Summarize this document in 5 bullet points",
     "What are the key concepts I must know?",
