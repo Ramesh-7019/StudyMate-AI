@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export function CTA() {
   return (
@@ -14,10 +15,10 @@ export function CTA() {
             Join 200,000+ students already learning faster with StudyMate AI. Free forever for the essentials.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center gap-3">
-            <a href="#" className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-foreground text-background font-medium hover:scale-[1.02] transition-transform shadow-glow">
+            <Link to="/login" className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-foreground text-background font-medium hover:scale-[1.02] transition-transform shadow-glow">
               Start free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
+            </Link>
             <a href="#pricing" className="inline-flex items-center justify-center px-8 py-4 rounded-full glass font-medium hover:bg-white/5 transition-colors">
               See pricing
             </a>
