@@ -58,7 +58,7 @@ function ChatPage() {
       }
       setConvId(cid ?? null);
       const { data: msgs } = await supabase.from("messages").select("*").eq("conversation_id", cid!).order("created_at");
-      setMessages((msgs ?? []) as Msg[]);
+      setMessages((msgs ?? []) as unknown as Msg[]);
     })();
   }, [activeDoc, user]);
 
