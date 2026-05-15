@@ -37,9 +37,14 @@ function ChatPage() {
 
   const loadDocs = useCallback(async () => {
     const { data } = await supabase.from("documents").select("*").order("created_at", { ascending: false });
-    setDocs((data ?? []) as Doc[]);
-    if (data && data.length && !activeDoc) setActiveDoc(data[0] as Doc);
-  }, [activeDoc]);
+    const list = (data ?? []) as Doc[];
+    setDocs(list);
+    setActiveDoc((cur) => {
+      if (!cur) return list[0] ?? null;
+      const fresh = list.find((x) => x.id === cur.id);
+      return fresh ?? list[0] ?? null;
+    });
+  }, []);
 
   useEffect(() => { if (user) loadDocs(); }, [user, loadDocs]);
 
