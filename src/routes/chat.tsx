@@ -69,9 +69,8 @@ function ChatPage() {
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, streamingText]);
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  async function uploadFile(file: File) {
+    if (!user) return;
     if (file.type !== "application/pdf") return toast.error("Only PDF files are supported");
     if (file.size > 25 * 1024 * 1024) return toast.error("Max file size is 25MB");
 
@@ -86,7 +85,7 @@ function ChatPage() {
 
     setDocs((d) => [doc as Doc, ...d]);
     setActiveDoc(doc as Doc);
-    toast.message("Processing PDF…", { description: "Extracting text and indexing." });
+    toast.message("Processing PDF…", { description: "Extracting text. Scanned PDFs use AI vision (may take longer)." });
 
     try {
       await processFn({ data: { documentId: doc.id } });
@@ -96,6 +95,20 @@ function ChatPage() {
       toast.error(err instanceof Error ? err.message : "Processing failed");
       loadDocs();
     }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+    if (e.target) e.target.value = "";
+  }
+
+  const [dragOver, setDragOver] = useState(false);
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
   }
 
   async function send() {
@@ -216,7 +229,19 @@ function ChatPage() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col relative"
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+      >
+        {dragOver && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-aurora-1 rounded-lg pointer-events-none">
+            <div className="text-center">
+              <Upload className="w-10 h-10 mx-auto text-aurora-1 mb-2" />
+              <p className="font-medium">Drop your PDF to upload</p>
+            </div>
+          </div>
+        )}
         <header className="border-b border-border/40 px-6 py-3 flex items-center gap-3">
           <MessageSquare className="w-4 h-4 text-aurora-1" />
           <div className="font-medium truncate">{activeDoc?.title ?? "Select a document"}</div>
@@ -226,13 +251,14 @@ function ChatPage() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-8">
           <div className="max-w-3xl mx-auto space-y-6">
             {!activeDoc && (
-              <div className="text-center py-20">
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full text-center py-16 rounded-3xl border-2 border-dashed border-border/50 hover:border-aurora-1 hover:bg-white/5 transition-all">
                 <div className="inline-grid place-items-center w-16 h-16 rounded-2xl bg-aurora animate-aurora mb-4 shadow-glow">
                   <Plus className="w-7 h-7 text-background" />
                 </div>
                 <h2 className="text-2xl font-display font-semibold">Upload a PDF to get started</h2>
-                <p className="text-muted-foreground mt-2">Your AI tutor will read it and answer questions with citations.</p>
-              </div>
+                <p className="text-muted-foreground mt-2">Click to choose, or drag & drop anywhere here. Scanned PDFs work too — we'll OCR them.</p>
+              </button>
             )}
             {activeDoc && activeDoc.status === "failed" && (
               <div className="glass-strong rounded-2xl p-6 border border-destructive/30">
