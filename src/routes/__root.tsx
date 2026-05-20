@@ -76,10 +76,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "StudyMate AI is the AI-powered learning operating system for students. Chat with your PDFs, generate notes, quizzes, flashcards, and study smarter." },
       { name: "author", content: "StudyMate AI" },
       { property: "og:title", content: "StudyMate AI — Your Personal AI Learning OS" },
-      { property: "og:description", content: "Chat with your PDFs, generate notes, quizzes, flashcards, and study smarter with an AI tutor that knows your material." },
+      { property: "og:description", content: "StudyMate AI is the AI-powered learning operating system for students. Chat with your PDFs, generate notes, quizzes, flashcards, and study smarter." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "StudyMate AI — Your Personal AI Learning OS" },
+      { name: "twitter:description", content: "StudyMate AI is the AI-powered learning operating system for students. Chat with your PDFs, generate notes, quizzes, flashcards, and study smarter." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/f94c2781-ace3-4be2-997b-f9058b24889c" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/f94c2781-ace3-4be2-997b-f9058b24889c" },
     ],
     links: [
       {
